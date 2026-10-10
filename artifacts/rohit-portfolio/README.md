@@ -33,22 +33,22 @@ src/
 
 ## Scene media
 
-Place source art in `public/assets` at the paths already declared by `src/scenes/registry.ts`:
+Scene art is loaded from `public/assets` at the paths declared by `src/scenes/registry.ts`:
 
 ```text
 assets/
   scenes/01-hero.webp
   scenes/02-about.webp
   scenes/03-projects.webp
-  scenes/04-skills.webp
-  scenes/05-experience.webp
-  scenes/06-contact.webp
-  depth/hero-depth.png
-  depth/about-depth.png
-  depth/projects-depth.png
-  depth/skills-depth.png
-  depth/experience-depth.png
-  depth/contact-depth.png
+  scenes/04 - skills.webp
+  scenes/05 - experience.webp
+  scenes/06 - contact.webp
+  depth/01-hero-depth.png
+  depth/02-about-depth.png
+  depth/03-projects-depth.png
+  depth/04 - skills-depth.png
+  depth/05 - experience-depth.png
+  depth/06 - contact-depth.png
   layers/01-hero-far.webp
   layers/01-hero-mid.webp
   layers/01-hero-near.webp
@@ -57,10 +57,10 @@ assets/
   layers/03-projects-near.webp
 ```
 
-HERO and PROJECTS render a background plus three layered image planes. ABOUT, SKILLS, EXPERIENCE, and CONTACT use a depth-map displacement shader. Until these files are added, the texture loader logs each missing path and keeps the experience running with original generated canvas-texture art and a procedural depth fallback; no asset files are fabricated.
+HERO and PROJECTS render a background plus three layered image planes. ABOUT, SKILLS, EXPERIENCE, and CONTACT use a depth-map displacement shader. The scene, depth, and layer files listed above are present in the uploaded asset folder; the registry URL-encodes spaces in the SKILLS, EXPERIENCE, and CONTACT filenames. Generated textures remain only as a fallback if a future asset cannot be loaded. A separate CSS atmosphere and semantic UI remain available if WebGL is unavailable.
 
 To add a scene, add its typed entry in `sceneRegistry`, select `layered` or `depth`, add the matching content in `SceneCopy`, and supply media at the registry paths. `preloadNextScene()` begins loading the following scene's textures when a scene mounts. The renderer caps DPR at 1.5; coarse-pointer devices use camera auto-sway and skip post-processing. Reduced-motion preference replaces camera travel with a scene blend.
 
 ## Tune
 
-Append `?debug` to the URL to show Leva. The panel exposes parallax strength, depth scale, fog density, transition duration, and focal-point x/y for every scene. The values update the Zustand scene store in real time. The mute toggle is intentionally UI-only until ambient audio assets are supplied.
+Append `?debug` to the URL to show Leva. The panel exposes parallax strength, depth scale, fog density, transition duration, and focal-point x/y for every scene. The values update the Zustand scene store in real time. The mute toggle remains UI-only in Phase 1; the uploaded audio and material textures are reserved for later phases.

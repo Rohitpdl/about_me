@@ -1,4 +1,5 @@
-import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import { Component, lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import type { ReactNode } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { Preload } from '@react-three/drei';
 import { AdditiveBlending, BufferAttribute, BufferGeometry, Color, DoubleSide, Group, Mesh, PerspectiveCamera, Points, ShaderMaterial, Texture, Vector3 } from 'three';
@@ -6,6 +7,24 @@ import { loadSceneAssets, getFallbackAssets, preloadNextScene } from './assetTex
 import { sceneById, sceneRegistry, type SceneId } from './registry';
 import { useWorldStore } from './store';
 const PostProcessing = lazy(() => import('./PostProcessing'));
+
+class SceneCanvasBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
+  state = { failed: false };
+
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+
+  componentDidCatch(error: Error) {
+    console.warn('[scene engine] WebGL canvas failed; using the CSS atmosphere fallback.', error);
+  }
+
+  render() {
+    return this.state.failed
+      ? <div className="webgl-world webgl-fallback" aria-hidden="true" />
+      : this.props.children;
+  }
+}
 
 const PLANE_W = 33;
 const PLANE_H = 18.56;
@@ -258,15 +277,17 @@ export default function WorldCanvas() {
   }
 
   return (
-    <div className="webgl-world" aria-hidden="true">
-      <Canvas
-        dpr={[1, 1.5]}
-        camera={{ position: [0, 0, 16.2], fov: 44, near: .1, far: 100 }}
-        gl={{ alpha: false, antialias: !mobile, powerPreference: 'high-performance' }}
-        fallback={<div className="webgl-fallback" />}
-      >
-        <Suspense fallback={null}><WorldContents mobile={mobile} reduced={reduced} /></Suspense>
-      </Canvas>
-    </div>
+    <SceneCanvasBoundary>
+      <div className="webgl-world" aria-hidden="true">
+        <Canvas
+          dpr={[1, 1.5]}
+          camera={{ position: [0, 0, 16.2], fov: 44, near: .1, far: 100 }}
+          gl={{ alpha: false, antialias: !mobile, powerPreference: 'high-performance' }}
+          fallback={<div className="webgl-fallback" />}
+        >
+          <Suspense fallback={null}><WorldContents mobile={mobile} reduced={reduced} /></Suspense>
+        </Canvas>
+      </div>
+    </SceneCanvasBoundary>
   );
 }
