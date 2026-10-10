@@ -1,0 +1,1 @@
+- [WebGL preview fallback](webgl-preview-fallback.md) — keep semantic portfolio UI visible when the preview browser cannot create a WebGL context.
