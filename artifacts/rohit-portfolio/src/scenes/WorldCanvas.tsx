@@ -2,7 +2,7 @@ import { Component, lazy, Suspense, useEffect, useMemo, useRef, useState } from 
 import type { ReactNode } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { Preload } from '@react-three/drei';
-import { AdditiveBlending, BufferAttribute, BufferGeometry, Color, DoubleSide, Group, Mesh, PerspectiveCamera, Points, ShaderMaterial, Texture, Vector3 } from 'three';
+import { AdditiveBlending, BufferAttribute, BufferGeometry, Color, DoubleSide, Group, Mesh, PerspectiveCamera, Points, ShaderMaterial, Texture, Vector2, Vector3 } from 'three';
 import { loadSceneAssets, getFallbackAssets, preloadNextScene } from './assetTextures';
 import { sceneById, sceneRegistry, type SceneId } from './registry';
 import { useWorldStore } from './store';
@@ -34,10 +34,13 @@ const vertexShader = `
   uniform sampler2D uDepth;
   uniform float uDepthScale;
   uniform float uTime;
+  uniform vec2 uPointer;
+  uniform float uParallaxStrength;
   void main() {
-    vUv = uv;
-    vec3 p = position;
     float depth = texture2D(uDepth, uv).r;
+    vec2 parallaxOffset = uPointer * (depth - 0.5) * uParallaxStrength;
+    vUv = clamp(uv + parallaxOffset, vec2(0.001), vec2(0.999));
+    vec3 p = position;
     float breathe = sin(uv.x * 8.0 + uTime * .18) * .013;
     p.z += (depth - .48) * uDepthScale * .68 + breathe;
     vHeight = depth;
@@ -74,6 +77,8 @@ function usePointer() {
   }, []);
   return point;
 }
+
+type PointerRef = ReturnType<typeof usePointer>;
 
 function FogAndDust({ density, reduced }: { density: number; reduced: boolean }) {
   const points = useRef<Points>(null);
@@ -113,7 +118,7 @@ function FogAndDust({ density, reduced }: { density: number; reduced: boolean })
   );
 }
 
-function CameraRig({ pointer, reduced }: { pointer: { current: { x: number; y: number } }; reduced: boolean }) {
+function CameraRig({ pointer, reduced }: { pointer: PointerRef; reduced: boolean }) {
   const camera = useThree((state) => state.camera) as PerspectiveCamera;
   const scratch = useMemo(() => new Vector3(), []);
   useFrame((state, delta) => {
@@ -144,18 +149,21 @@ function CameraRig({ pointer, reduced }: { pointer: { current: { x: number; y: n
   return null;
 }
 
-function DepthScene({ sceneId, opacity, texture, depth, depthScale, reduced }: { sceneId: SceneId; opacity: number; texture: Texture; depth: Texture; depthScale: number; reduced: boolean }) {
+function DepthScene({ sceneId, opacity, texture, depth, depthScale, parallaxStrength, pointer, reduced }: { sceneId: SceneId; opacity: number; texture: Texture; depth: Texture; depthScale: number; parallaxStrength: number; pointer: PointerRef; reduced: boolean }) {
   const mesh = useRef<Mesh>(null);
   const material = useMemo(() => new ShaderMaterial({
     uniforms: {
       uImage: { value: texture }, uDepth: { value: depth }, uDepthScale: { value: depthScale }, uTime: { value: 0 }, uOpacity: { value: opacity },
+      uPointer: { value: new Vector2() }, uParallaxStrength: { value: parallaxStrength },
     },
     vertexShader, fragmentShader, transparent: true, side: DoubleSide, depthWrite: false,
-  }), [depth, depthScale, texture]);
+  }), [depth, depthScale, parallaxStrength, texture]);
   useFrame((state) => {
     material.uniforms.uTime.value = reduced ? 0 : state.clock.elapsedTime;
     material.uniforms.uOpacity.value = opacity;
     material.uniforms.uDepthScale.value = depthScale;
+    material.uniforms.uPointer.value.set(reduced ? 0 : pointer.current.x, reduced ? 0 : -pointer.current.y);
+    material.uniforms.uParallaxStrength.value = parallaxStrength;
     if (mesh.current) {
       const point = useWorldStore.getState().sceneTuning[sceneId].focalPoint;
       mesh.current.position.x = (point.x - .5) * -.44;
@@ -165,9 +173,8 @@ function DepthScene({ sceneId, opacity, texture, depth, depthScale, reduced }: {
   return <mesh ref={mesh} position={[0, 0, .1]} material={material}><planeGeometry args={[PLANE_W, PLANE_H, 112, 64]} /></mesh>;
 }
 
-function LayerScene({ opacity, image, layers, reduced }: { opacity: number; image: Texture; layers: Texture[]; reduced: boolean }) {
+function LayerScene({ opacity, image, layers, pointer, reduced }: { opacity: number; image: Texture; layers: Texture[]; pointer: PointerRef; reduced: boolean }) {
   const group = useRef<Group>(null);
-  const pointer = usePointer();
   useFrame((state, delta) => {
     if (reduced) return;
     if (!group.current) return;
@@ -192,7 +199,7 @@ function LayerScene({ opacity, image, layers, reduced }: { opacity: number; imag
   );
 }
 
-function SceneVisual({ sceneId, opacity, reduced }: { sceneId: SceneId; opacity: number; reduced: boolean }) {
+function SceneVisual({ sceneId, opacity, pointer, reduced }: { sceneId: SceneId; opacity: number; pointer: PointerRef; reduced: boolean }) {
   const definition = sceneById(sceneId);
   const fallback = useMemo(() => getFallbackAssets(definition), [definition]);
   const [assets, setAssets] = useState(fallback);
@@ -207,13 +214,13 @@ function SceneVisual({ sceneId, opacity, reduced }: { sceneId: SceneId; opacity:
   return (
     <group>
       {definition.mode === 'layered'
-        ? <LayerScene opacity={opacity} image={assets.image} layers={assets.layers} reduced={reduced} />
+        ? <LayerScene opacity={opacity} image={assets.image} layers={assets.layers} pointer={pointer} reduced={reduced} />
         : <group>
           <mesh position={[0, 0, -1.1]}>
             <planeGeometry args={[PLANE_W, PLANE_H]} />
             <meshBasicMaterial map={assets.image} color="#627a7b" transparent opacity={opacity * .48} depthWrite={false} />
           </mesh>
-          <DepthScene sceneId={sceneId} opacity={opacity} texture={assets.image} depth={assets.depth} depthScale={tune.depthScale} reduced={reduced} />
+          <DepthScene sceneId={sceneId} opacity={opacity} texture={assets.image} depth={assets.depth} depthScale={tune.depthScale} parallaxStrength={tune.parallaxStrength} pointer={pointer} reduced={reduced} />
         </group>}
     </group>
   );
@@ -241,8 +248,8 @@ function WorldContents({ mobile, reduced }: { mobile: boolean; reduced: boolean 
       <directionalLight intensity={.8} color="#bddbd8" position={[-5, 8, 11]} />
       <pointLight intensity={3.4} color="#ffb347" distance={15} position={[3.2, -3.4, 4.5]} />
       <CameraRig pointer={pointer} reduced={reduced} />
-      <SceneVisual sceneId={primaryScene} opacity={firstOpacity} reduced={reduced} />
-      {(canTravel || crossfading) && <SceneVisual sceneId={otherScene} opacity={secondOpacity} reduced={reduced} />}
+      <SceneVisual sceneId={primaryScene} opacity={firstOpacity} pointer={pointer} reduced={reduced} />
+      {(canTravel || crossfading) && <SceneVisual sceneId={otherScene} opacity={secondOpacity} pointer={pointer} reduced={reduced} />}
       <FogAndDust density={density} reduced={reduced} />
       {!mobile && !reduced && <Suspense fallback={null}><PostProcessing mobile={false} reduced={false} /></Suspense>}
       <Preload all />
