@@ -1,0 +1,51 @@
+PHASE 3. Keep everything from Phases 1 and 2 working. Do NOT start Phase 4. Stop when done and report.
+
+A. FIXES FROM PHASE 2 REVIEW (Projects scene)
+1. Brightness: the storefront is too dark. Lift exposure/shadows about 20-25% in the Projects scene and reduce vignette strength a bit so the building, vines and street are readable. The red door stays the brightest element. Add exposure and vignette sliders to leva.
+2. Framing: on wide viewports the image crop cuts the top of the sign board. Frame the scene so the whole sign board and the door always stay inside the safe area between the letterbox bars. Scale or position the image to keep that rectangle visible, and reduce the desktop letterbox bar height to about 5vh.
+3. Move the "ENTER" hover label BELOW the door, not over the lamp. Remove the "The journal will arrive later" placeholder.
+4. Bottom-left text: add more spacing between the tagline and "FIELD NOTES". Show the "03 / 06" counter in only one place.
+5. Verify that projects-sign-anchor sits exactly over the blank sign board and stays on it during parallax and on window resize. Fix it if it drifts.
+
+B. THE BROKEN NEON "PROJECTS" SIGN
+Build it inside projects-sign-anchor as DOM/SVG so it moves with the building's parallax.
+- Text: PROJECTS in Tilt Neon, sized to about 80% of the board width, centered.
+- Draw each letter in two layers: an UNLIT glass tube (dark desaturated red outline, no glow) and a LIT layer (hot core #ffd6cf, red #ff4a3d body, stacked red glow via text-shadow/filter, plus a soft radial glow on the board behind it using screen blending). The unlit tube must be visible when a letter is off so it reads as a real physical sign.
+- Boot-up on scene arrival: sign starts off and sputters on letter by letter within about 1.2s, except the dead letter.
+- Dead letter: the J stays unlit permanently, with only its dark tube visible.
+- Flickering: each remaining letter runs its own random schedule. Mostly steady, then bursts of 2-4 quick flickers (40-160ms) every 1.5-6s. The T flickers more often, and the O buzzes with rapid micro-flicker. Every 8-15s a power surge: all letters dim about 60% for ~120ms then pop to about 110% and settle.
+- Sparks: every 6-12s, 6-10 tiny orange-white particles arc from the dead J for about 400ms with a brief light flash on the board.
+- Depth: draw 2-3 dark vine/leaf silhouettes (SVG) hanging in front of a couple of letters so the sign feels physically behind the vines.
+- Hover or focus: the sign flares brighter and the J sputters once. Pointer cursor. Make it keyboard-focusable (role=button, aria-label "Projects: open the journal"). Clicking the sign or the red door both start the same ENTER sequence.
+- prefers-reduced-motion: no flicker or sparks, steady glow, J stays dead.
+- Add a tiny event bus (src/lib/events.ts) that emits sign:flicker, sign:spark, journal:open, journal:close and page:turn so audio can hook in during Phase 5. Don't add audio now.
+
+C. ENTER SEQUENCE AND THE DESK SCENE
+1. On click: camera dolly through the red door (reuse transitionTo), fog thickens, brief darkness, then the DESK scene fades in.
+2. Desk scene (no image asset exists, build it procedurally): a dark room. A wood desk surface using /assets/textures/wood.jpg in perspective (CSS 3D or a three.js plane), warm lamp glow from the top left in lamp amber #ffb347 with a subtle flicker, drifting dust, a vignette, and a few simple SVG props (a pencil, a coffee cup, a crumpled paper). In the center sits a closed leather journal using /assets/textures/leather.jpg (CSS 3D box or a three.js box with a thin cover, a page-block edge, a strap), with a soft shadow.
+3. Hover the journal: it lifts slightly and a label "OPEN" appears. Click: the cover rotates open (CSS 3D rotateY, about 0.9s) while the view pushes in, then crossfades into the diary spread.
+4. A back arrow / Esc closes the journal, returns to the desk, and a "Back to the street" control returns to the storefront by reversing the transition.
+5. Scrolling must NOT change scenes while the desk or diary is open (lock scroll navigation). Re-enable it when you return to the storefront.
+
+D. THE DIARY (Ellie-style journal, but original)
+Build it as DOM/CSS, not WebGL. Pause or lower the WebGL frame rate while the diary is fully open to save GPU.
+1. Layout: a two-page open book centered on screen, max-width about 1100px, on a worn leather base with a spine shadow in the center. Single page view on mobile, with swipe and tap to go page by page.
+2. Page look: /assets/textures/paper-clean.jpg as the page base, paper-stained.jpg at about 20-30% opacity multiplied in the corners, edge burn/vignette, a slightly uneven torn edge on the outer sides (SVG mask), a coffee ring on one page (SVG), faint ruled lines or a grid, and the page-curl shadow near the spine.
+3. Text: handwriting in Reenie Beanie, dark graphite (#2a2a2a), large enough to read (about 28-34px for body), slightly rotated lines (-0.5 to 0.5deg) for a hand-written feel. Reveal each line with a left-to-right clip mask so it looks like it's being written, 60-90ms stagger. Section labels and dates in Special Elite.
+4. Spreads (6 total):
+   - Spread 1, contents: left page "PROJECT LOG" title with a short intro line, right page a hand-written list of the four projects. Each entry is clickable and jumps to its spread.
+   - Spreads 2-5, one per project (use src/data/content.ts): LEFT page has the handwritten title, "year: ____" placeholder, a 2-3 sentence placeholder description in a personal, diary voice (write sensible placeholder text), a tech stack as a hand-drawn checklist (checkbox SVGs whose check marks draw in), and a handwritten underlined link line pointing to the GitHub URL. RIGHT page has the project sketch taped to the page with 2 CSS/SVG masking-tape pieces at slight angles, margin doodles (arrows, circles, stars) in SVG, and a small handwritten caption.
+   - Spread 6, closing: "More coming. Check the repos." with the GitHub link and a small doodle.
+5. Sketches: create four placeholder pencil-style SVGs in /public/assets/sketches/ with these exact names so I can swap my own later: sketch-terrain.svg (contour-line ridges plus a small grid/neural-net), sketch-style-transfer.svg (photo frame, arrow, painterly frame, small cube), sketch-platformer.svg (a tiny character mid-jump over floating platforms with a coin), sketch-compression.svg (a big box squeezed into a small box with a small binary tree). Use stroke-only paths, rough hand-drawn wobble, graphite color. Load them by fetching and inlining the SVG so every path can animate with stroke-dashoffset (draw-in over about 1.5s, started when the spread opens). If a replaced sketch is a raster image instead of SVG, reveal it with a left-to-right clip wipe.
+6. Page turning: click the page corners (show a small corner-curl hint on hover), arrow buttons, left/right arrow keys, or swipe. Use a CSS 3D flip of the right page (rotateY about -180deg from the left edge, about 0.7s) with a moving shadow gradient. Emit page:turn. Keep a small page indicator (e.g. "2 / 6") in Special Elite.
+7. Close button (X) and Esc return to the desk.
+8. Textures: if a texture file fails to load, or its corners are near-white (meaning it's a sphere preview and not a flat map), fall back to procedural CSS/SVG noise and log a console warning naming the file.
+
+E. ACCESSIBILITY AND MOBILE
+- The diary is a dialog (role=dialog, aria-modal), focus-trapped, with Esc to close and labelled controls.
+- Provide an accessible, visually hidden text version of all project content in the DOM.
+- prefers-reduced-motion: no page flips or stroke-draw, crossfade between spreads and show text instantly.
+- Mobile: skip heavy effects, single-page view, tap targets at least 44px.
+
+F. REPORT
+Update the README (how to swap the sketches, where the sign and diary live, how to tune the neon timings). When done, STOP and tell me what you built, how to test it, and anything that failed to load.
