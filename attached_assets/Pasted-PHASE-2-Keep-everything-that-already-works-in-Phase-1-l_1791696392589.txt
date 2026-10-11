@@ -1,0 +1,38 @@
+PHASE 2. Keep everything that already works in Phase 1 (look, parallax, hero, about, HUD, debug panel). Do NOT start Phase 3. Stop when done and report.
+
+A. FIXES CARRIED OVER FROM PHASE 1 REVIEW
+
+1. Scroll through all six scenes
+- Scrolling currently stops after About. Make wheel, trackpad, touch swipe, arrow keys, PageUp/PageDown and Space move through ALL six scenes in order (Hero, About, Projects, Skills, Experience, Contact), forward and backward.
+- One generic transitionTo(sceneId) for every pair. Use the dolly + fog + chromatic pulse + dark beat, aimed at the current scene's focalPoint. If a scene has no layers or focalPoint, fall back to a crossfade with a slight scale push.
+- Hero -> About stays scrubbed by scroll (reversible). All other pairs: a scroll or swipe past a small threshold triggers a timed transition (about 1.6s), and scrolling back reverses to the previous scene.
+- Lock input during a transition, ignore trackpad inertia for about 400ms after it ends so one flick never skips two scenes, and add a short cooldown. Never leave the user stuck: if a transition is interrupted, finish or snap to the nearest scene.
+- Pips, menu, and keyboard stay in sync with the current scene. Make the pips clickable.
+- prefers-reduced-motion: crossfade only.
+
+2. Faster text
+- Render each scene's text in the DOM before its transition ends. Start the entrance animation when the transition is about 55-60% done, not after it finishes.
+- Never wait for textures to load before showing text.
+- Entrance: 0.4-0.5s per line, 50-70ms stagger, opacity + small translateY only.
+- Preload Tilt Neon, Special Elite and Reenie Beanie in index.html with font-display: swap.
+- After each scene settles, preload the next AND previous scene's textures.
+
+3. Small polish
+- Raise the contrast of the small eyebrow labels (like "A LITTLE ABOUT THE PERSON BEHIND THE PIXELS") with a subtle dark text-shadow or a faint dark gradient behind the text.
+- Use the clean filenames 04-skills.webp, 05-experience.webp, 06-contact.webp in the registry.
+- Keep the CSS fallback for browsers without WebGL.
+
+B. NEW IN PHASE 2: THE PROJECTS ("STOREFRONT") SCENE
+
+1. Rendering: use the LAYERED mode for 03-projects (far, mid, near layers) with different parallax multipliers. The near layer (street) moves the most, the far layer the least.
+2. Focal point: the red-lit door, at about (0.58, 0.58). Make it tunable in leva.
+3. Arrival transition: when About -> Projects finishes, the camera should come to rest facing the storefront at a slightly low angle, with ground fog drifting over the street and a few dust particles. A very slow idle push toward the door (about 2% over 20s), plus the usual mouse parallax.
+4. Sign frame: the large blank sign board above the door is where the neon sign will go in Phase 3. For now, add an invisible, correctly positioned and scaled DOM/mesh anchor called "projects-sign-anchor" over that board, anchored to the layer so it moves with the building's parallax. Add a faint debug outline for it under ?debug.
+5. Door hotspot: make the red door a keyboard-focusable, clickable hotspot. On hover, slightly raise the red glow and show a small label "ENTER". On click, for now just log "door clicked" and show a subtle placeholder message, since the journal is built in Phase 3.
+6. Scene text (HUD style, small, bottom left): label "03 / 06", title "THE LOG", and a short line "Every project is an entry." Keep it understated, because the sign and journal are the stars.
+7. Red-light behavior: add a slow, subtle pulse (about 6-8%) on the glow of the red door so it feels alive, with an occasional faint flicker.
+
+C. CLEANUP AND REPORT
+- Update the README: how scrolling and the pips work, how to tune each scene's focal point, and where the sign anchor lives.
+- Keep the performance settings (DPR cap 1.5, no heavy effects on mobile).
+- When done, STOP and tell me: how many scenes I can scroll through, the transition timings you set, and any assets that failed to load.

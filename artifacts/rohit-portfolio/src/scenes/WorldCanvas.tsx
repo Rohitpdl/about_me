@@ -3,9 +3,10 @@ import type { ReactNode } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { Preload } from '@react-three/drei';
 import { AdditiveBlending, BufferAttribute, BufferGeometry, Color, DoubleSide, Group, Mesh, PerspectiveCamera, Points, ShaderMaterial, Texture, Vector2, Vector3 } from 'three';
-import { loadSceneAssets, getFallbackAssets, preloadNextScene } from './assetTextures';
-import { sceneById, sceneRegistry, type SceneId } from './registry';
+import { loadSceneAssets, getFallbackAssets, preloadAdjacentScenes } from './assetTextures';
+import { hasLayeredFocalPair, sceneById, type SceneId } from './registry';
 import { useWorldStore } from './store';
+import ProjectsStorefront from './ProjectsStorefront';
 const PostProcessing = lazy(() => import('./PostProcessing'));
 
 class SceneCanvasBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
@@ -121,30 +122,54 @@ function FogAndDust({ density, reduced }: { density: number; reduced: boolean })
 function CameraRig({ pointer, reduced }: { pointer: PointerRef; reduced: boolean }) {
   const camera = useThree((state) => state.camera) as PerspectiveCamera;
   const scratch = useMemo(() => new Vector3(), []);
+  const lookTarget = useMemo(() => new Vector3(), []);
+  const projectIdleStart = useRef<number | null>(null);
   useFrame((state, delta) => {
     const { currentScene, transitionFrom, progress, sceneTuning } = useWorldStore.getState();
-    const heroAboutTransition = (transitionFrom === 'hero' || transitionFrom === 'about') && (currentScene === 'hero' || currentScene === 'about');
-    const travel = heroAboutTransition && !reduced ? progress : 0;
+    const heroAboutTransition = transitionFrom === 'hero' && (currentScene === 'hero' || currentScene === 'about');
+    const sceneDolly = transitionFrom !== null && hasLayeredFocalPair(transitionFrom, currentScene);
+    const travel = (heroAboutTransition || sceneDolly) && !reduced ? progress : 0;
     const heroFocus = sceneTuning.hero.focalPoint;
     const aboutFocus = sceneTuning.about.focalPoint;
-    const xFocus = heroAboutTransition ? heroFocus.x + (aboutFocus.x - heroFocus.x) * travel : sceneTuning[currentScene].focalPoint.x;
-    const yFocus = heroAboutTransition ? heroFocus.y + (aboutFocus.y - heroFocus.y) * travel : sceneTuning[currentScene].focalPoint.y;
+    const fromFocus = transitionFrom ? sceneTuning[transitionFrom].focalPoint : sceneTuning[currentScene].focalPoint;
+    const toFocus = sceneTuning[currentScene].focalPoint;
+    const xFocus = heroAboutTransition && !reduced
+      ? heroFocus.x + (aboutFocus.x - heroFocus.x) * travel
+      : sceneDolly
+        ? fromFocus.x + (toFocus.x - fromFocus.x) * travel
+        : toFocus.x;
+    const yFocus = heroAboutTransition && !reduced
+      ? heroFocus.y + (aboutFocus.y - heroFocus.y) * travel
+      : sceneDolly
+        ? fromFocus.y + (toFocus.y - fromFocus.y) * travel
+        : toFocus.y;
     const desktop = !reduced && !window.matchMedia('(pointer: coarse)').matches;
     const sx = desktop ? pointer.current.x : Math.sin(state.clock.elapsedTime * .22) * .18;
     const sy = desktop ? pointer.current.y : Math.cos(state.clock.elapsedTime * .18) * .12;
     const parallax = (sceneTuning[currentScene]?.parallaxStrength ?? .025) * 18;
     const targetX = reduced ? 0 : (xFocus - .5) * 5.6 - sx * parallax;
-    const targetY = reduced ? 0 : (.5 - yFocus) * 3.2 + sy * parallax * .7 + travel * .4;
-    const targetZ = heroAboutTransition ? 16.2 - travel * 3.6 : 16.2;
+    const lowAngle = currentScene === 'projects' ? -.32 : 0;
+    const targetY = reduced ? 0 : (.5 - yFocus) * 3.2 + sy * parallax * .7 + travel * .4 + lowAngle;
+    if (currentScene === 'projects' && transitionFrom === null) {
+      if (projectIdleStart.current === null) projectIdleStart.current = state.clock.elapsedTime;
+    } else {
+      projectIdleStart.current = null;
+    }
+    const idleTime = projectIdleStart.current === null ? 0 : state.clock.elapsedTime - projectIdleStart.current;
+    const idlePush = currentScene === 'projects' && !reduced && transitionFrom === null
+      ? (1 - Math.cos((idleTime / 20) * Math.PI * 2)) * .16
+      : 0;
+    const targetZ = (heroAboutTransition ? 16.2 - travel * 3.6 : sceneDolly ? 16.2 - travel * 3.2 : 16.2) - idlePush;
     const ease = 1 - Math.exp(-delta * 2.8);
     scratch.set(targetX, targetY, targetZ);
     camera.position.lerp(scratch, ease);
-    const baseFov = 44 + travel * 13;
+    const baseFov = 44 + travel * (heroAboutTransition ? 13 : 9);
     if (Math.abs(camera.fov - baseFov) > .01) {
       camera.fov += (baseFov - camera.fov) * ease;
       camera.updateProjectionMatrix();
     }
-    camera.lookAt(targetX * .35, targetY * .35, 0);
+    lookTarget.set(reduced ? 0 : (xFocus - .5) * 5.6, reduced ? 0 : (.5 - yFocus) * 3.2, 0);
+    camera.lookAt(lookTarget);
   });
   return null;
 }
@@ -199,7 +224,7 @@ function LayerScene({ opacity, image, layers, pointer, reduced }: { opacity: num
   );
 }
 
-function SceneVisual({ sceneId, opacity, pointer, reduced }: { sceneId: SceneId; opacity: number; pointer: PointerRef; reduced: boolean }) {
+function SceneVisual({ sceneId, opacity, pointer, reduced, debug }: { sceneId: SceneId; opacity: number; pointer: PointerRef; reduced: boolean; debug: boolean }) {
   const definition = sceneById(sceneId);
   const fallback = useMemo(() => getFallbackAssets(definition), [definition]);
   const [assets, setAssets] = useState(fallback);
@@ -208,13 +233,14 @@ function SceneVisual({ sceneId, opacity, pointer, reduced }: { sceneId: SceneId;
     let alive = true;
     setAssets(fallback);
     void loadSceneAssets(sceneId).then((result) => { if (alive) setAssets(result); });
-    preloadNextScene(sceneId);
     return () => { alive = false; };
   }, [fallback, sceneId]);
   return (
     <group>
       {definition.mode === 'layered'
-        ? <LayerScene opacity={opacity} image={assets.image} layers={assets.layers} pointer={pointer} reduced={reduced} />
+        ? sceneId === 'projects'
+          ? <ProjectsStorefront image={assets.image} layers={assets.layers} opacity={opacity} pointer={pointer} reduced={reduced} debug={debug} />
+          : <LayerScene opacity={opacity} image={assets.image} layers={assets.layers} pointer={pointer} reduced={reduced} />
         : <group>
           <mesh position={[0, 0, -1.1]}>
             <planeGeometry args={[PLANE_W, PLANE_H]} />
@@ -226,19 +252,28 @@ function SceneVisual({ sceneId, opacity, pointer, reduced }: { sceneId: SceneId;
   );
 }
 
-function WorldContents({ mobile, reduced }: { mobile: boolean; reduced: boolean }) {
+function WorldContents({ mobile, reduced, debug }: { mobile: boolean; reduced: boolean; debug: boolean }) {
   const active = useWorldStore((state) => state.currentScene);
   const transitionFrom = useWorldStore((state) => state.transitionFrom);
+  const transitioning = useWorldStore((state) => state.transitioning);
   const progress = useWorldStore((state) => state.progress);
   const sceneTuning = useWorldStore((state) => state.sceneTuning);
   const pointer = usePointer();
+  useEffect(() => {
+    if (transitioning) return;
+    const settleFrame = window.setTimeout(() => {
+      const state = useWorldStore.getState();
+      if (!state.transitioning && state.currentScene === active) preloadAdjacentScenes(active);
+    }, 0);
+    return () => window.clearTimeout(settleFrame);
+  }, [active, transitioning]);
   const canTravel = (transitionFrom === 'hero' || transitionFrom === 'about') && (active === 'hero' || active === 'about');
   const crossfading = transitionFrom !== null && !canTravel;
   const primaryScene = transitionFrom ?? active;
   const otherScene: SceneId = canTravel ? (primaryScene === 'hero' ? 'about' : 'hero') : active;
   const firstOpacity = canTravel || crossfading ? 1 - progress : 1;
   const secondOpacity = canTravel || crossfading ? progress : 0;
-  const density = sceneTuning[active].fogDensity;
+  const density = sceneTuning[active].fogDensity + (transitioning && !reduced ? Math.sin(progress * Math.PI) * .012 : 0);
   const fogColor = sceneById(active).fogColor;
   return (
     <>
@@ -248,8 +283,8 @@ function WorldContents({ mobile, reduced }: { mobile: boolean; reduced: boolean 
       <directionalLight intensity={.8} color="#bddbd8" position={[-5, 8, 11]} />
       <pointLight intensity={3.4} color="#ffb347" distance={15} position={[3.2, -3.4, 4.5]} />
       <CameraRig pointer={pointer} reduced={reduced} />
-      <SceneVisual sceneId={primaryScene} opacity={firstOpacity} pointer={pointer} reduced={reduced} />
-      {(canTravel || crossfading) && <SceneVisual sceneId={otherScene} opacity={secondOpacity} pointer={pointer} reduced={reduced} />}
+      <SceneVisual sceneId={primaryScene} opacity={firstOpacity} pointer={pointer} reduced={reduced} debug={debug} />
+      {(canTravel || crossfading) && <SceneVisual sceneId={otherScene} opacity={secondOpacity} pointer={pointer} reduced={reduced} debug={debug} />}
       <FogAndDust density={density} reduced={reduced} />
       {!mobile && !reduced && <Suspense fallback={null}><PostProcessing mobile={false} reduced={false} /></Suspense>}
       <Preload all />
@@ -260,6 +295,7 @@ function WorldContents({ mobile, reduced }: { mobile: boolean; reduced: boolean 
 export default function WorldCanvas() {
   const mobile = useMemo(() => window.matchMedia('(max-width: 700px), (pointer: coarse)').matches, []);
   const reduced = useMemo(() => window.matchMedia('(prefers-reduced-motion: reduce)').matches, []);
+  const debug = useMemo(() => new URLSearchParams(window.location.search).has('debug'), []);
   const [webglAvailable, setWebglAvailable] = useState(false);
 
   useEffect(() => {
@@ -292,7 +328,7 @@ export default function WorldCanvas() {
           gl={{ alpha: false, antialias: !mobile, powerPreference: 'high-performance' }}
           fallback={<div className="webgl-fallback" />}
         >
-          <Suspense fallback={null}><WorldContents mobile={mobile} reduced={reduced} /></Suspense>
+          <Suspense fallback={null}><WorldContents mobile={mobile} reduced={reduced} debug={debug} /></Suspense>
         </Canvas>
       </div>
     </SceneCanvasBoundary>

@@ -4,8 +4,8 @@ import { sceneRegistry, type SceneId, type SceneTuning } from './registry';
 const initialTuning = Object.fromEntries(sceneRegistry.map((scene) => [scene.id, {
   parallaxStrength: scene.parallaxStrength,
   depthScale: 1.25,
-  fogDensity: .018,
-  transitionDuration: 1.55,
+  fogDensity: scene.id === 'projects' ? .026 : .018,
+  transitionDuration: 1.6,
   focalPoint: { ...scene.focalPoint },
 }])) as Record<SceneId, SceneTuning>;
 

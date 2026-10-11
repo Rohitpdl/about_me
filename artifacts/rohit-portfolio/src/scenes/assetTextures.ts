@@ -137,8 +137,11 @@ export function preloadScene(id: SceneId) {
   void loadSceneAssets(id);
 }
 
-export function preloadNextScene(id: SceneId) {
+export function preloadAdjacentScenes(id: SceneId) {
   const index = sceneRegistry.findIndex((scene) => scene.id === id);
+  if (index < 0) return;
+  const previous = sceneRegistry[(index - 1 + sceneRegistry.length) % sceneRegistry.length];
   const next = sceneRegistry[(index + 1) % sceneRegistry.length];
+  if (previous) preloadScene(previous.id);
   if (next) preloadScene(next.id);
 }
