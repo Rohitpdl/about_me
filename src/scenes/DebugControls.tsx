@@ -33,6 +33,15 @@ export default function DebugControls() {
       onChange: (value) => useWorldStore.getState().updateFocalPoint(scene.id, { y: value }),
     };
   }
+  const state = useWorldStore.getState();
+  schema['projects / Exposure'] = {
+    value: state.projectsExposure, min: 0.8, max: 1.5, step: 0.01,
+    onChange: (value) => useWorldStore.getState().setProjectsExposure(value),
+  };
+  schema['projects / Vignette'] = {
+    value: state.projectsVignette, min: 0.15, max: 1, step: 0.01,
+    onChange: (value) => useWorldStore.getState().setProjectsVignette(value),
+  };
   useControls('Scene tuning · all six scenes', schema);
   return <Leva collapsed />;
 }

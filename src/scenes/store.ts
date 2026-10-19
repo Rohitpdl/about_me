@@ -15,11 +15,17 @@ type WorldState = {
   transitioning: boolean;
   progress: number;
   muted: boolean;
+  overlay: 'none' | 'desk' | 'diary';
+  projectsExposure: number;
+  projectsVignette: number;
   sceneTuning: Record<SceneId, SceneTuning>;
   setCurrentScene: (scene: SceneId) => void;
   setTransition: (transitioning: boolean, progress: number) => void;
   setTransitionFrom: (scene: SceneId | null) => void;
   setMuted: (muted: boolean) => void;
+  setOverlay: (overlay: WorldState['overlay']) => void;
+  setProjectsExposure: (exposure: number) => void;
+  setProjectsVignette: (vignette: number) => void;
   updateSceneTuning: (scene: SceneId, patch: Partial<Omit<SceneTuning, 'focalPoint'>>) => void;
   updateFocalPoint: (scene: SceneId, point: Partial<SceneTuning['focalPoint']>) => void;
 };
@@ -30,11 +36,17 @@ export const useWorldStore = create<WorldState>((set) => ({
   transitioning: false,
   progress: 0,
   muted: true,
+  overlay: 'none',
+  projectsExposure: 1.22,
+  projectsVignette: 0.58,
   sceneTuning: initialTuning,
   setCurrentScene: (currentScene) => set({ currentScene }),
   setTransition: (transitioning, progress) => set({ transitioning, progress }),
   setTransitionFrom: (transitionFrom) => set({ transitionFrom }),
   setMuted: (muted) => set({ muted }),
+  setOverlay: (overlay) => set({ overlay }),
+  setProjectsExposure: (projectsExposure) => set({ projectsExposure }),
+  setProjectsVignette: (projectsVignette) => set({ projectsVignette }),
   updateSceneTuning: (scene, patch) => set((state) => ({
     sceneTuning: { ...state.sceneTuning, [scene]: { ...state.sceneTuning[scene], ...patch } },
   })),
@@ -44,3 +56,5 @@ export const useWorldStore = create<WorldState>((set) => ({
     return { sceneTuning: { ...state.sceneTuning, [scene]: { ...state.sceneTuning[scene], focalPoint: { ...previous, ...point } } } };
   }),
 }));
+
+export const enterJournal = () => useWorldStore.getState().setOverlay('desk');
