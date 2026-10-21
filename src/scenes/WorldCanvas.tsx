@@ -296,6 +296,7 @@ export default function WorldCanvas() {
   const mobile = useMemo(() => window.matchMedia('(max-width: 700px), (pointer: coarse)').matches, []);
   const reduced = useMemo(() => window.matchMedia('(prefers-reduced-motion: reduce)').matches, []);
   const debug = useMemo(() => new URLSearchParams(window.location.search).has('debug'), []);
+  const overlay = useWorldStore((state) => state.overlay);
   const [webglAvailable, setWebglAvailable] = useState(false);
 
   useEffect(() => {
@@ -323,6 +324,7 @@ export default function WorldCanvas() {
     <SceneCanvasBoundary>
       <div className="webgl-world" aria-hidden="true">
         <Canvas
+          frameloop={overlay === 'diary' ? 'never' : 'always'}
           dpr={[1, 1.5]}
           camera={{ position: [0, 0, 16.2], fov: 44, near: .1, far: 100 }}
           gl={{ alpha: false, antialias: !mobile, powerPreference: 'high-performance' }}

@@ -325,27 +325,35 @@ function SignAnchor({ debug, reduced }: { debug: boolean; reduced: boolean }) {
             <span className="neon-board-glow" aria-hidden="true" />
             <span className="neon-letters" aria-hidden="true">
               {'PROJECTS'.split('').map((letter, index) => (
-                <span
+                  <span
                   key={`${letter}-${index}`}
                   ref={(node) => {
                     letterRefs.current[index] = node;
                     if (letter === 'J') deadLetterRef.current = node;
                   }}
                   className={`neon-letter${letter === 'J' ? ' neon-letter-dead' : ''}`}
-                >
-                  <span className="neon-letter-unlit">{letter}</span>
-                  {letter !== 'J' && (
-                    <span className="neon-letter-lit">
-                      {letter}<span className="neon-letter-core">{letter}</span>
-                    </span>
-                  )}
-                </span>
-              ))}
+                    data-char={letter}
+                  >
+                    {letter}
+                  </span>
+                ))}
             </span>
             <svg className="neon-vines" viewBox="0 0 1000 1000" preserveAspectRatio="none" aria-hidden="true">
-              <path d="M84 0 C86 100 50 134 71 217 S69 332 37 402" />
-              <path d="M576 0 C568 102 601 141 580 229 S615 343 649 393" />
-              <path d="M916 0 C902 84 943 147 914 212 S923 325 968 365" />
+                <g className="vine vine-one">
+                  <path className="vine-stem" d="M84 0 C86 100 50 134 71 217 S69 332 37 402" />
+                  <path className="vine-leaves" d="M80 28 C50 3 36 12 61 39 C70 48 77 39 80 28Z M87 43 C110 9 127 17 103 48 C94 57 87 52 87 43Z M75 57 C38 39 27 54 60 69 C69 73 74 66 75 57Z M91 68 C129 40 140 55 105 78 C96 84 91 77 91 68Z M72 85 C42 68 31 83 60 96 C67 100 72 93 72 85Z M94 99 C123 75 135 88 104 108 C97 112 93 106 94 99Z M69 112 C47 96 37 110 61 122 C67 125 70 119 69 112Z M91 127 C113 108 125 120 99 136 C93 140 90 134 91 127Z" />
+                  <path className="vine-leaves" d="M65 211 C39 190 28 202 54 225 C62 232 67 221 65 211Z M76 227 C103 201 116 215 88 239 C80 245 76 237 76 227Z M61 242 C34 229 27 242 53 254 C60 257 63 250 61 242Z M81 260 C107 244 116 257 89 270 C82 274 79 267 81 260Z M56 275 C35 265 29 277 52 285 C58 287 59 281 56 275Z" />
+                </g>
+                <g className="vine vine-two">
+                  <path className="vine-stem" d="M576 0 C568 102 601 141 580 229 S615 343 649 393" />
+                  <path className="vine-leaves" d="M571 25 C541 2 529 14 555 39 C564 47 570 36 571 25Z M579 40 C609 12 623 26 592 49 C584 55 579 49 579 40Z M565 57 C531 39 520 53 552 68 C560 72 565 66 565 57Z M582 73 C617 49 629 63 596 83 C588 88 582 81 582 73Z M561 90 C534 75 524 89 552 101 C559 104 562 98 561 90Z M581 107 C612 89 623 102 592 119 C585 123 580 115 581 107Z M567 126 C543 111 534 123 558 137 C565 141 569 133 567 126Z" />
+                  <path className="vine-leaves" d="M570 205 C546 185 535 197 559 220 C567 227 572 215 570 205Z M582 221 C608 198 621 211 592 234 C584 240 580 231 582 221Z M566 238 C540 225 532 237 558 250 C565 253 568 246 566 238Z M585 256 C612 239 622 252 593 267 C586 271 583 264 585 256Z M575 274 C552 263 544 275 568 285 C574 288 577 280 575 274Z" />
+                </g>
+                <g className="vine vine-three">
+                  <path className="vine-stem" d="M916 0 C902 84 943 147 914 212 S923 325 968 365" />
+                  <path className="vine-leaves" d="M910 28 C882 5 870 17 894 42 C902 50 909 39 910 28Z M919 43 C949 16 962 29 932 53 C924 59 919 52 919 43Z M902 60 C870 42 860 56 892 71 C900 75 904 68 902 60Z M922 76 C957 51 969 65 936 86 C928 91 922 84 922 76Z M897 94 C870 78 861 92 888 105 C896 108 899 101 897 94Z M917 111 C948 92 960 105 929 123 C921 127 916 119 917 111Z M905 130 C881 114 871 127 896 141 C903 145 907 137 905 130Z" />
+                  <path className="vine-leaves" d="M901 211 C878 190 867 202 890 225 C898 232 903 221 901 211Z M914 228 C941 205 953 218 924 241 C916 247 912 238 914 228Z M895 245 C870 231 862 243 888 256 C895 259 898 252 895 245Z M917 263 C943 247 953 260 925 274 C918 278 915 270 917 263Z M908 281 C885 269 877 281 900 292 C907 295 910 287 908 281Z" />
+                </g>
             </svg>
             <span className="neon-sparks" aria-hidden="true">
               {sparks.map((spark) => (
@@ -384,6 +392,7 @@ function DoorInteraction({ opacity, active, onActiveChange }: { opacity: number;
       <Html center transform={false} portal={portal} zIndexRange={[20, 0]} style={{ pointerEvents: 'auto' }}>
         <button
           type="button"
+          className="projects-door-hitbox"
           aria-label="Enter the journal"
           onClick={clickDoor}
            onPointerEnter={() => onActiveChange(true)}
@@ -411,14 +420,17 @@ function DoorInteraction({ opacity, active, onActiveChange }: { opacity: number;
         >
           <span
             aria-hidden="true"
+            className="projects-enter-label"
             style={{
               position: 'absolute',
               left: '50%',
-              top: 'calc(100% + 4px)',
+              top: 'calc(100% + 14px)',
               transform: 'translateX(-50%)',
               opacity: active ? 0.9 : 0,
               transition: 'opacity 220ms ease',
               whiteSpace: 'nowrap',
+              userSelect: 'none',
+              WebkitUserSelect: 'none',
             }}
           >
             ENTER
@@ -434,16 +446,17 @@ function DoorGlow({ reduced, active }: { reduced: boolean; active: boolean }) {
   useFrame(({ clock }) => {
     if (!material.current) return;
     if (reduced) {
-      material.current.uniforms.uOpacity.value = active ? 0.23 : 0.18;
+      material.current.uniforms.uOpacity.value = active ? 0.84 : 0.78;
       return;
     }
     const time = clock.elapsedTime;
-    const breathe = Math.sin(time * (Math.PI * 2 / 7.2)) * 0.008;
+    const breathe = Math.sin(time * (Math.PI * 2 / 9.5)) * 0.025;
     const flicker = Math.sin(time * 2.13) > 0.996 ? -0.03 : 0;
-    material.current.uniforms.uOpacity.value = Math.max(0.12, 0.18 + (active ? 0.05 : 0) + breathe + flicker);
+    material.current.uniforms.uOpacity.value = Math.max(0.62, 0.78 + (active ? 0.06 : 0) + breathe + flicker);
   });
 
   return (
+    <>
     <mesh position={[(0.585 - 0.5) * PLANE_W, (0.5 - 0.6) * PLANE_H, 0.045]} renderOrder={4}>
       <planeGeometry args={[3.1, 4.3]} />
       <shaderMaterial
@@ -454,19 +467,66 @@ function DoorGlow({ reduced, active }: { reduced: boolean; active: boolean }) {
           varying vec2 vUv;
           void main() {
             vec2 p = (vUv - 0.5) * vec2(1.0, 1.2);
-            float halo = exp(-dot(p, p) * 15.0);
-            float core = exp(-dot(p, p) * 55.0);
-            float alpha = (halo * 0.7 + core * 0.3) * uOpacity;
-            gl_FragColor = vec4(vec3(0.88, 0.12, 0.08), alpha);
+            float edge = smoothstep(0.0, 0.13, vUv.x) * (1.0 - smoothstep(0.87, 1.0, vUv.x))
+                       * smoothstep(0.0, 0.1, vUv.y) * (1.0 - smoothstep(0.9, 1.0, vUv.y));
+            float center = 0.74 + 0.26 * exp(-dot(p, p) * 35.0);
+            float halo = exp(-dot(p, p) * 11.0) * 0.2;
+            float alpha = max(edge * center * uOpacity, halo * uOpacity);
+            gl_FragColor = vec4(vec3(1.0, 0.006, 0.001), alpha);
           }
         `}
-        uniforms={{ uOpacity: { value: 0.18 } }}
+        uniforms={{ uOpacity: { value: 0.78 } }}
         transparent
         depthWrite={false}
         blending={AdditiveBlending}
         side={DoubleSide}
       />
     </mesh>
+    <group
+      position={[(0.585 - 0.5) * PLANE_W, (0.5 - 0.6) * PLANE_H - 2.1, 0.042]}
+      renderOrder={4}
+    >
+      <mesh>
+        <planeGeometry args={[4.2, 1.4]} />
+        <shaderMaterial
+          vertexShader={fogVertexShader}
+          fragmentShader={`
+            varying vec2 vUv;
+            void main() {
+              vec2 p = (vUv - 0.5) * vec2(1.0, 1.6);
+              float spill = exp(-dot(p, p) * 30.0) * smoothstep(0.0, 0.3, vUv.y);
+              gl_FragColor = vec4(vec3(1.0, 0.01, 0.002), spill * 0.24);
+            }
+          `}
+          transparent
+          depthWrite={false}
+          blending={AdditiveBlending}
+          side={DoubleSide}
+        />
+      </mesh>
+      {[-0.9, 0.9].map((offset) => (
+        <mesh key={offset} position={[offset, 1.8, 0.002]}>
+          <planeGeometry args={[1.1, 3.8]} />
+          <shaderMaterial
+            vertexShader={fogVertexShader}
+            fragmentShader={`
+              varying vec2 vUv;
+              void main() {
+                float horizontal = exp(-pow((vUv.x - 0.5) * 2.0, 2.0) * 22.0);
+                float vertical = smoothstep(0.0, 0.2, vUv.y) * (1.0 - smoothstep(0.8, 1.0, vUv.y));
+                float alpha = horizontal * vertical * 0.1;
+                gl_FragColor = vec4(vec3(1.0, 0.018, 0.003), alpha);
+              }
+            `}
+            transparent
+            depthWrite={false}
+            blending={AdditiveBlending}
+            side={DoubleSide}
+          />
+        </mesh>
+      ))}
+    </group>
+    </>
   );
 }
 

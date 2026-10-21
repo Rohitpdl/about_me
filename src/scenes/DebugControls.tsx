@@ -35,7 +35,7 @@ export default function DebugControls() {
   }
   const state = useWorldStore.getState();
   schema['projects / Exposure'] = {
-    value: state.projectsExposure, min: 0.8, max: 1.5, step: 0.01,
+    value: state.projectsExposure, min: 0.8, max: 1.8, step: 0.01,
     onChange: (value) => useWorldStore.getState().setProjectsExposure(value),
   };
   schema['projects / Vignette'] = {

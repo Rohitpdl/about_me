@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { sceneRegistry, type SceneId, type SceneTuning } from './registry';
+import { emit } from '../lib/events';
 
 const initialTuning = Object.fromEntries(sceneRegistry.map((scene) => [scene.id, {
   parallaxStrength: scene.parallaxStrength,
@@ -37,8 +38,8 @@ export const useWorldStore = create<WorldState>((set) => ({
   progress: 0,
   muted: true,
   overlay: 'none',
-  projectsExposure: 1.22,
-  projectsVignette: 0.58,
+  projectsExposure: 1.55,
+  projectsVignette: 0.38,
   sceneTuning: initialTuning,
   setCurrentScene: (currentScene) => set({ currentScene }),
   setTransition: (transitioning, progress) => set({ transitioning, progress }),
@@ -57,4 +58,16 @@ export const useWorldStore = create<WorldState>((set) => ({
   }),
 }));
 
-export const enterJournal = () => useWorldStore.getState().setOverlay('desk');
+export const enterJournal = () => {
+  const store = useWorldStore.getState();
+  if (store.overlay !== 'none') return;
+  store.setOverlay('desk');
+  emit('journal:open');
+};
+
+export const closeJournal = () => {
+  const store = useWorldStore.getState();
+  if (store.overlay === 'none') return;
+  store.setOverlay('none');
+  emit('journal:close');
+};

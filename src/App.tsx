@@ -7,8 +7,9 @@ import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { hasLayeredFocalPair, sceneById, sceneRegistry, type SceneId } from './scenes/registry';
 import { portfolioContent } from './data/content';
-import { useWorldStore } from './scenes/store';
+import { closeJournal, useWorldStore } from './scenes/store';
 import DebugControls from './scenes/DebugControls';
+import Desk from './components/Desk';
 
 const WorldCanvas = lazy(() => import('./scenes/WorldCanvas'));
 type SceneCommand = (id: SceneId) => void;
@@ -38,9 +39,9 @@ function SceneCopy({ id }: { id: SceneId }) {
   );
   if (id === 'projects') return (
     <section className="projects-hud" aria-label="Projects scene">
-      <span data-scene-line>03 / 06</span>
       <h1 data-scene-line>THE LOG</h1>
       <p data-scene-line>Every project is an entry.</p>
+      <span className="projects-field-notes" data-scene-line>FIELD NOTES</span>
     </section>
   );
   if (id === 'skills') return (
@@ -71,6 +72,7 @@ export default function App() {
   const progress = useWorldStore((state) => state.progress);
   const sceneTuning = useWorldStore((state) => state.sceneTuning);
   const muted = useWorldStore((state) => state.muted);
+  const overlay = useWorldStore((state) => state.overlay);
   const setMuted = useWorldStore((state) => state.setMuted);
   const lenisRef = useRef<Lenis | null>(null);
   const triggerRef = useRef<ScrollTrigger | null>(null);
@@ -79,6 +81,8 @@ export default function App() {
   const crossfadeTween = useRef<gsap.core.Tween | null>(null);
   const inputCooldownUntil = useRef(0);
   const menuOpenRef = useRef(menuOpen);
+  const [journalEntering, setJournalEntering] = useState(false);
+  const [journalReturning, setJournalReturning] = useState(false);
   menuOpenRef.current = menuOpen;
   const currentIndex = sceneRegistry.findIndex((scene) => scene.id === activeId);
   const currentScene = sceneById(activeId);
@@ -202,6 +206,7 @@ export default function App() {
     transitionHandler = jump;
 
     const onKeyDown = (event: KeyboardEvent) => {
+      if (useWorldStore.getState().overlay !== 'none') return;
       if (event.key === 'Escape') setMenuOpen(false);
       if (menuOpenRef.current) return;
       const target = event.target instanceof HTMLElement ? event.target : null;
@@ -228,6 +233,7 @@ export default function App() {
     };
 
     const onWheel = (event: WheelEvent) => {
+      if (useWorldStore.getState().overlay !== 'none') return;
       if (menuOpenRef.current || event.ctrlKey) return;
       const state = useWorldStore.getState();
       const now = Date.now();
@@ -266,6 +272,7 @@ export default function App() {
     };
 
     const onTouchStart = (event: TouchEvent) => {
+      if (useWorldStore.getState().overlay !== 'none') return;
       const target = event.target instanceof Element ? event.target : null;
       const state = useWorldStore.getState();
       touchStart = {
@@ -278,6 +285,7 @@ export default function App() {
     };
 
     const onTouchMove = (event: TouchEvent) => {
+      if (useWorldStore.getState().overlay !== 'none') return;
       if (!touchStart || touchStart.interactive || menuOpenRef.current) return;
       const state = useWorldStore.getState();
       const scrubTravel = state.transitioning && state.transitionFrom === 'hero' && isJourneyScene(state.currentScene);
@@ -297,6 +305,7 @@ export default function App() {
     };
 
     const onTouchEnd = (event: TouchEvent) => {
+      if (useWorldStore.getState().overlay !== 'none') return;
       if (!touchStart) return;
       const start = touchStart;
       touchStart = null;
@@ -319,7 +328,10 @@ export default function App() {
       if (destination) jump(destination);
     };
 
-    const onTouchCancel = () => { touchStart = null; };
+    const onTouchCancel = () => {
+      if (useWorldStore.getState().overlay !== 'none') return;
+      touchStart = null;
+    };
 
     window.addEventListener('keydown', onKeyDown);
     window.addEventListener('wheel', onWheel, { capture: true, passive: false });
@@ -345,14 +357,40 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (menuOpen) lenisRef.current?.stop();
+    if (menuOpen || overlay !== 'none') lenisRef.current?.stop();
     else lenisRef.current?.start();
-  }, [menuOpen]);
+  }, [menuOpen, overlay]);
+
+  useEffect(() => {
+    document.body.classList.toggle('journal-open', overlay !== 'none');
+    if (overlay !== 'desk') {
+      setJournalEntering(false);
+      return () => document.body.classList.remove('journal-open');
+    }
+    setJournalEntering(true);
+    const timer = window.setTimeout(() => setJournalEntering(false), 1400);
+    return () => {
+      window.clearTimeout(timer);
+      document.body.classList.remove('journal-open');
+    };
+  }, [overlay]);
+
+  useEffect(() => {
+    if (overlay !== 'none' && menuOpen) setMenuOpen(false);
+  }, [menuOpen, overlay]);
+
+  useEffect(() => {
+    if (!journalReturning) return;
+    const timer = window.setTimeout(() => setJournalReturning(false), 500);
+    return () => window.clearTimeout(timer);
+  }, [journalReturning]);
+
+  const journalPushed = overlay !== 'none' && !reduceMotion && !journalReturning;
 
   return (
     <>
       <main className="portfolio" aria-label="Rohit Paudel portfolio" style={{ '--fog-density': sceneTuning[activeId].fogDensity, '--transition-progress': progress } as CSSProperties}>
-        <div className={`scene-world ${transitioning ? 'travelling' : 'settled'}`} data-scene={activeId} style={{ '--transition-push': transitioning && !reduceMotion && transitionFrom && !((transitionFrom === 'hero' && isJourneyScene(activeId)) || hasLayeredFocalPair(transitionFrom, activeId)) ? .018 * Math.sin(progress * Math.PI) : 0 } as CSSProperties}>
+        <div className={`scene-world ${transitioning ? 'travelling' : 'settled'}${journalEntering ? ' journal-entering' : ''}${journalPushed ? ' journal-overlay-active' : ''}${journalReturning ? ' journal-returning' : ''}`} data-scene={activeId} style={{ '--transition-push': journalPushed ? .055 : transitioning && !reduceMotion && transitionFrom && !((transitionFrom === 'hero' && isJourneyScene(activeId)) || hasLayeredFocalPair(transitionFrom, activeId)) ? .018 * Math.sin(progress * Math.PI) : 0 } as CSSProperties}>
           <Suspense fallback={<div className="webgl-fallback" aria-hidden="true" />}><WorldCanvas /></Suspense>
           <div className="scene-wash" aria-hidden="true" />
           <div className="vignette" aria-hidden="true" />
@@ -364,9 +402,9 @@ export default function App() {
           <header className="topline">
             <div className="wordmark" aria-label="Rohit Paudel portfolio">R.P. <span>— Field archive / 01</span></div>
             <div className="top-actions">
-              <button className="skip-button" onClick={() => transitionTo('about')} disabled={transitioning} data-testid="button-skip-intro">Skip intro</button>
+              <button className="skip-button" onClick={() => transitionTo('about')} disabled={transitioning || overlay !== 'none'} data-testid="button-skip-intro">Skip intro</button>
               <button className="icon-button" onClick={() => setMuted(!muted)} aria-label={muted ? 'Unmute ambient audio' : 'Mute ambient audio'} aria-pressed={!muted} data-testid="button-mute">{muted ? <VolumeX size={15} /> : <Volume2 size={15} />}</button>
-              <button className="icon-button" onClick={() => setMenuOpen(true)} disabled={transitioning} aria-label="Open section menu" aria-expanded={menuOpen} data-testid="button-open-menu"><MenuIcon size={16} /></button>
+              <button className="icon-button" onClick={() => setMenuOpen(true)} disabled={transitioning || overlay !== 'none'} aria-label="Open section menu" aria-expanded={menuOpen} data-testid="button-open-menu"><MenuIcon size={16} /></button>
             </div>
           </header>
           <motion.section className={`scene-content ${activeId === 'projects' ? 'projects-copy' : ''} ${!transitioning || progress >= .56 ? 'is-revealed' : ''}`} key={activeId} initial={{ opacity: 0 }} animate={{ opacity: transitioning && progress < .56 ? 0 : 1 }} transition={{ duration: reduceUiMotion ? 0 : .45, ease: 'easeOut' }} aria-live="polite">
@@ -374,11 +412,12 @@ export default function App() {
           </motion.section>
           {activeId === 'hero' && <button className="scroll-hint" onClick={() => transitionTo('about')} aria-label="Scroll to enter the portfolio" data-testid="button-scroll-enter">SCROLL TO ENTER</button>}
           <nav className="compass" aria-label="Portfolio sections">
-            {sceneRegistry.map((scene) => <button key={scene.id} className={`compass-pip ${activeId === scene.id ? 'active' : ''}`} disabled={transitioning} onClick={() => transitionTo(scene.id)} aria-label={`Go to ${scene.title}`} aria-current={activeId === scene.id ? 'step' : undefined} data-testid={`button-section-${scene.id}`} />)}
+            {sceneRegistry.map((scene) => <button key={scene.id} className={`compass-pip ${activeId === scene.id ? 'active' : ''}`} disabled={transitioning || overlay !== 'none'} onClick={() => transitionTo(scene.id)} aria-label={`Go to ${scene.title}`} aria-current={activeId === scene.id ? 'step' : undefined} data-testid={`button-section-${scene.id}`} />)}
           </nav>
-          <div className="section-readout" aria-live="polite" data-testid="text-active-section">{currentScene.label}</div>
+          {activeId !== 'projects' && <div className="section-readout" aria-live="polite" data-testid="text-active-section">{currentScene.label}</div>}
           <div className="scene-count" aria-label={`Scene ${currentIndex + 1} of ${sceneRegistry.length}`}>0{currentIndex + 1} <span>/ 0{sceneRegistry.length}</span></div>
         </div>
+        {(overlay === 'desk' || overlay === 'diary') && <Desk overlay={overlay} reducedMotion={reduceMotion} onCloseStart={() => setJournalReturning(true)} onClose={closeJournal} />}
         <AnimatePresence>
         {menuOpen && <motion.div className="menu-panel" role="dialog" aria-modal="true" aria-labelledby="menu-title" onMouseDown={(event) => { if (event.target === event.currentTarget) setMenuOpen(false); }} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: reduceUiMotion ? 0 : .22 }}>
           <motion.div className="menu-inner" initial={{ x: reduceUiMotion ? 0 : 30 }} animate={{ x: 0 }} exit={{ x: reduceUiMotion ? 0 : 24 }} transition={{ duration: reduceUiMotion ? 0 : .3, ease: 'easeOut' }}>
