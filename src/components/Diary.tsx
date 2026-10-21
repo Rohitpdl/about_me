@@ -5,6 +5,7 @@ import { emit } from '../lib/events';
 
 type DiaryProps = {
   reducedMotion: boolean;
+  initialSpread?: number;
   onBack: () => void;
 };
 
@@ -136,11 +137,11 @@ function ProjectWriting({ project, index, reducedMotion }: { project: PortfolioP
   );
 }
 
-export default function Diary({ reducedMotion, onBack }: DiaryProps) {
+export default function Diary({ reducedMotion, initialSpread = 1, onBack }: DiaryProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const swipeStart = useRef<{ x: number; y: number } | null>(null);
   const turnTimer = useRef<number | null>(null);
-  const [spread, setSpread] = useState(0);
+  const [spread, setSpread] = useState(() => Math.max(0, Math.min(5, Math.floor(initialSpread) - 1)));
   const [turning, setTurning] = useState(false);
   const [paperFallback, setPaperFallback] = useState(false);
   const currentProjectIndex = spread - 1;
@@ -249,8 +250,9 @@ export default function Diary({ reducedMotion, onBack }: DiaryProps) {
       aria-labelledby="diary-heading"
       onKeyDown={onKeyDown}
     >
-      <button className="diary-close" type="button" onClick={onBack} aria-label="Close journal and return to desk">×</button>
-      <div className="diary-book-wrap">
+      <div className="diary-stage">
+        <button className="diary-close" type="button" onClick={onBack} aria-label="Close journal and return to desk">×</button>
+        <div className="diary-book-wrap">
         <div className="diary-book-base" aria-hidden="true" />
         <div
           className={`diary-spread${turning ? ' is-turning' : ''}${spread === 5 ? ' is-closing-spread' : ''}`}
@@ -311,11 +313,12 @@ export default function Diary({ reducedMotion, onBack }: DiaryProps) {
           {turning && <div className={`diary-turn-leaf ${spread < 5 ? 'turn-forward' : 'turn-back'}`} aria-hidden="true"><div /><div /></div>}
         </div>
         <div className="diary-spine-shadow" aria-hidden="true" />
-      </div>
-      <div className="diary-navigation" aria-label="Journal navigation">
-        <button type="button" onClick={() => turnTo(spread - 1)} disabled={spread === 0} aria-label="Previous spread">←</button>
-        <span>{spread + 1} / 6</span>
-        <button type="button" onClick={() => turnTo(spread + 1)} disabled={spread === 5} aria-label="Next spread">→</button>
+        </div>
+        <div className="diary-navigation" aria-label="Journal navigation">
+          <button type="button" onClick={() => turnTo(spread - 1)} disabled={spread === 0} aria-label="Previous spread">←</button>
+          <span>{spread + 1} / 6</span>
+          <button type="button" onClick={() => turnTo(spread + 1)} disabled={spread === 5} aria-label="Next spread">→</button>
+        </div>
       </div>
       <div className="sr-only" aria-live="polite">Spread {spread + 1} of 6</div>
       <section className="sr-only" aria-label="Text version of all project journal entries">

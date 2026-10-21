@@ -86,9 +86,24 @@ export default function App() {
   menuOpenRef.current = menuOpen;
   const currentIndex = sceneRegistry.findIndex((scene) => scene.id === activeId);
   const currentScene = sceneById(activeId);
-  const isDebug = new URLSearchParams(window.location.search).has('debug');
+  const query = new URLSearchParams(window.location.search);
+  const debugScene = query.get('scene');
+  const debugOverlay = query.get('overlay');
+  const debugRoute = debugScene === 'projects' &&
+    (debugOverlay === 'desk' || debugOverlay === 'diary');
+  const isDebug = query.has('debug') || debugRoute;
+  const initialSpread = Math.max(1, Math.min(6, Number.parseInt(query.get('spread') ?? '1', 10) || 1));
   const reduceMotion = Boolean(reduceUiMotion);
   const transitionFrom = useWorldStore((state) => state.transitionFrom);
+
+  useEffect(() => {
+    if (!debugRoute || (debugOverlay !== 'desk' && debugOverlay !== 'diary')) return;
+    const store = useWorldStore.getState();
+    store.setCurrentScene('projects');
+    store.setTransitionFrom(null);
+    store.setTransition(false, 0);
+    store.setOverlay(debugOverlay);
+  }, []);
 
   useEffect(() => {
     gsap.registerPlugin(ScrollTrigger);
@@ -417,7 +432,7 @@ export default function App() {
           {activeId !== 'projects' && <div className="section-readout" aria-live="polite" data-testid="text-active-section">{currentScene.label}</div>}
           <div className="scene-count" aria-label={`Scene ${currentIndex + 1} of ${sceneRegistry.length}`}>0{currentIndex + 1} <span>/ 0{sceneRegistry.length}</span></div>
         </div>
-        {(overlay === 'desk' || overlay === 'diary') && <Desk overlay={overlay} reducedMotion={reduceMotion} onCloseStart={() => setJournalReturning(true)} onClose={closeJournal} />}
+        {(overlay === 'desk' || overlay === 'diary') && <Desk overlay={overlay} reducedMotion={reduceMotion} initialSpread={initialSpread} onCloseStart={() => setJournalReturning(true)} onClose={closeJournal} />}
         <AnimatePresence>
         {menuOpen && <motion.div className="menu-panel" role="dialog" aria-modal="true" aria-labelledby="menu-title" onMouseDown={(event) => { if (event.target === event.currentTarget) setMenuOpen(false); }} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: reduceUiMotion ? 0 : .22 }}>
           <motion.div className="menu-inner" initial={{ x: reduceUiMotion ? 0 : 30 }} animate={{ x: 0 }} exit={{ x: reduceUiMotion ? 0 : 24 }} transition={{ duration: reduceUiMotion ? 0 : .3, ease: 'easeOut' }}>

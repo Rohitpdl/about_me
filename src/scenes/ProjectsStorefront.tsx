@@ -138,6 +138,7 @@ function ParallaxLayer({
 
 function SignAnchor({ debug, reduced }: { debug: boolean; reduced: boolean }) {
   const currentScene = useWorldStore((state) => state.currentScene);
+  const visual = useWorldStore((state) => state.projectsVisual);
   const opacity = useWorldStore((state) => state.projectsVignette);
   const focalPoint = useWorldStore((state) => state.sceneTuning.projects.focalPoint);
   const canvasHeight = useThree((state) => state.size.height);
@@ -320,6 +321,12 @@ function SignAnchor({ debug, reduced }: { debug: boolean; reduced: boolean }) {
               width: `${projectedWidth}px`,
               height: `${projectedHeight}px`,
               '--sign-font-size': `${projectedWidth * 0.18}px`,
+              '--neon-core-width': `${visual.neonCoreWidth}em`,
+              '--neon-core-opacity': visual.neonCoreOpacity,
+              '--neon-core-tint': visual.neonCoreTint,
+              '--neon-body-saturation': visual.neonBodySaturation,
+              '--neon-body-brightness': visual.neonBodyBrightness,
+              '--neon-glow-strength': visual.neonGlowStrength,
             } as CSSProperties}
           >
             <span className="neon-board-glow" aria-hidden="true" />
@@ -443,22 +450,20 @@ function DoorInteraction({ opacity, active, onActiveChange }: { opacity: number;
 
 function DoorGlow({ reduced, active }: { reduced: boolean; active: boolean }) {
   const material = useRef<ShaderMaterial>(null);
+  const visual = useWorldStore((state) => state.projectsVisual);
   useFrame(({ clock }) => {
     if (!material.current) return;
     if (reduced) {
-      material.current.uniforms.uOpacity.value = active ? 0.84 : 0.78;
+      material.current.uniforms.uOpacity.value = visual.doorHaloIntensity * (active ? 1.12 : 1);
       return;
     }
-    const time = clock.elapsedTime;
-    const breathe = Math.sin(time * (Math.PI * 2 / 9.5)) * 0.025;
-    const flicker = Math.sin(time * 2.13) > 0.996 ? -0.03 : 0;
-    material.current.uniforms.uOpacity.value = Math.max(0.62, 0.78 + (active ? 0.06 : 0) + breathe + flicker);
+    const pulse = Math.sin(clock.elapsedTime * (Math.PI * 2 / 9.5)) * visual.doorPulseAmount;
+    material.current.uniforms.uOpacity.value = visual.doorHaloIntensity * (1 + pulse + (active ? 0.12 : 0));
   });
 
   return (
-    <>
     <mesh position={[(0.585 - 0.5) * PLANE_W, (0.5 - 0.6) * PLANE_H, 0.045]} renderOrder={4}>
-      <planeGeometry args={[3.1, 4.3]} />
+      <planeGeometry args={[3.5 * visual.doorHaloSize, 2.2 * visual.doorHaloSize]} />
       <shaderMaterial
         ref={material}
         vertexShader={fogVertexShader}
@@ -466,67 +471,21 @@ function DoorGlow({ reduced, active }: { reduced: boolean; active: boolean }) {
           uniform float uOpacity;
           varying vec2 vUv;
           void main() {
-            vec2 p = (vUv - 0.5) * vec2(1.0, 1.2);
-            float edge = smoothstep(0.0, 0.13, vUv.x) * (1.0 - smoothstep(0.87, 1.0, vUv.x))
-                       * smoothstep(0.0, 0.1, vUv.y) * (1.0 - smoothstep(0.9, 1.0, vUv.y));
-            float center = 0.74 + 0.26 * exp(-dot(p, p) * 35.0);
-            float halo = exp(-dot(p, p) * 11.0) * 0.2;
-            float alpha = max(edge * center * uOpacity, halo * uOpacity);
-            gl_FragColor = vec4(vec3(1.0, 0.006, 0.001), alpha);
+            vec2 p = (vUv - 0.5) * 2.0;
+            p.y *= 1.5;
+            float radius = dot(p, p);
+            float feather = 1.0 - smoothstep(0.58, 1.0, radius);
+            float alpha = exp(-radius * 4.2) * feather * uOpacity;
+            gl_FragColor = vec4(vec3(1.0, 0.018, 0.008), alpha);
           }
         `}
-        uniforms={{ uOpacity: { value: 0.78 } }}
+        uniforms={{ uOpacity: { value: visual.doorHaloIntensity } }}
         transparent
         depthWrite={false}
         blending={AdditiveBlending}
         side={DoubleSide}
       />
     </mesh>
-    <group
-      position={[(0.585 - 0.5) * PLANE_W, (0.5 - 0.6) * PLANE_H - 2.1, 0.042]}
-      renderOrder={4}
-    >
-      <mesh>
-        <planeGeometry args={[4.2, 1.4]} />
-        <shaderMaterial
-          vertexShader={fogVertexShader}
-          fragmentShader={`
-            varying vec2 vUv;
-            void main() {
-              vec2 p = (vUv - 0.5) * vec2(1.0, 1.6);
-              float spill = exp(-dot(p, p) * 30.0) * smoothstep(0.0, 0.3, vUv.y);
-              gl_FragColor = vec4(vec3(1.0, 0.01, 0.002), spill * 0.24);
-            }
-          `}
-          transparent
-          depthWrite={false}
-          blending={AdditiveBlending}
-          side={DoubleSide}
-        />
-      </mesh>
-      {[-0.9, 0.9].map((offset) => (
-        <mesh key={offset} position={[offset, 1.8, 0.002]}>
-          <planeGeometry args={[1.1, 3.8]} />
-          <shaderMaterial
-            vertexShader={fogVertexShader}
-            fragmentShader={`
-              varying vec2 vUv;
-              void main() {
-                float horizontal = exp(-pow((vUv.x - 0.5) * 2.0, 2.0) * 22.0);
-                float vertical = smoothstep(0.0, 0.2, vUv.y) * (1.0 - smoothstep(0.8, 1.0, vUv.y));
-                float alpha = horizontal * vertical * 0.1;
-                gl_FragColor = vec4(vec3(1.0, 0.018, 0.003), alpha);
-              }
-            `}
-            transparent
-            depthWrite={false}
-            blending={AdditiveBlending}
-            side={DoubleSide}
-          />
-        </mesh>
-      ))}
-    </group>
-    </>
   );
 }
 

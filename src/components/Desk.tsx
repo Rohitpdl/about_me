@@ -6,11 +6,12 @@ import { closeJournal, useWorldStore } from '../scenes/store';
 type DeskProps = {
   overlay: 'desk' | 'diary';
   reducedMotion: boolean;
+  initialSpread?: number;
   onCloseStart: () => void;
   onClose: () => void;
 };
 
-export default function Desk({ overlay, reducedMotion, onCloseStart, onClose }: DeskProps) {
+export default function Desk({ overlay, reducedMotion, initialSpread, onCloseStart, onClose }: DeskProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const bookRef = useRef<HTMLButtonElement>(null);
   const closeTimer = useRef<number | null>(null);
@@ -160,8 +161,9 @@ export default function Desk({ overlay, reducedMotion, onCloseStart, onClose }: 
           Back to the street
         </button>
       </div>
+      {isDiary && <div className="desk-diary-scrim" aria-hidden="true" />}
       <div className="desk-entry-wash" aria-hidden="true" />
-      {isDiary && <Diary reducedMotion={reducedMotion} onBack={() => useWorldStore.getState().setOverlay('desk')} />}
+      {isDiary && <Diary reducedMotion={reducedMotion} initialSpread={initialSpread} onBack={() => useWorldStore.getState().setOverlay('desk')} />}
     </div>
   );
 }

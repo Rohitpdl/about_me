@@ -235,22 +235,26 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--lamp); outline-
   color:#ff4a3d;
   -webkit-text-stroke:.045em #ff9a86;
   text-shadow:0 0 2px #ffd6cf,0 0 7px #ff4a3d,0 0 18px rgba(255,74,61,.98),0 0 40px rgba(255,54,43,.86),0 0 72px rgba(255,48,39,.5);
+  filter:saturate(var(--neon-body-saturation,1.12)) brightness(var(--neon-body-brightness,1.08)) drop-shadow(0 0 8px rgba(255,74,61,var(--neon-glow-strength,1)));
   transition:opacity 90ms linear,filter 90ms linear;
 }
 .neon-letter::after {
   color:transparent;
-  -webkit-text-stroke:.01em rgba(255,214,207,.82);
+  -webkit-text-stroke:var(--neon-core-width,.01em) var(--neon-core-tint,#ffd6cf);
   paint-order:stroke fill;
-  text-shadow:0 0 1px rgba(255,243,237,.9),0 0 3px rgba(255,214,207,.72),0 0 7px rgba(255,214,207,.46);
+  text-shadow:0 0 1px var(--neon-core-tint,#ffd6cf),0 0 3px var(--neon-core-tint,#ffd6cf),0 0 7px var(--neon-core-tint,#ffd6cf);
+  filter:brightness(var(--neon-glow-strength,1));
   transition:opacity 90ms linear,filter 90ms linear;
 }
-.neon-letter.is-lit::before,.neon-letter.is-lit::after { opacity:1; }
+.neon-letter.is-lit::before { opacity:1; }
+.neon-letter.is-lit::after { opacity:var(--neon-core-opacity,.6); }
 .neon-letter.is-flickering::before,.neon-letter.is-flickering::after { opacity:.08; filter:brightness(.48); }
 .neon-letter-dead { color:#3a171c; -webkit-text-stroke-color:#65262b; }
 .neon-letter-dead.is-flickering { animation:dead-neon-sputter 240ms steps(2,end) both; }
 .projects-neon-sign.is-engaged .neon-board-glow { opacity:1; filter:brightness(1.5); }
 .projects-neon-sign.is-sparking .neon-board-glow { animation:neon-board-flash 420ms ease-out both; }
-.projects-neon-sign.is-engaged .neon-letter.is-lit::before,.projects-neon-sign.is-engaged .neon-letter.is-lit::after { opacity:1; filter:brightness(1.28); }
+.projects-neon-sign.is-engaged .neon-letter.is-lit::before { opacity:1; filter:brightness(1.28) saturate(var(--neon-body-saturation,1.12)) drop-shadow(0 0 8px rgba(255,74,61,var(--neon-glow-strength,1))); }
+.projects-neon-sign.is-engaged .neon-letter.is-lit::after { opacity:var(--neon-core-opacity,.6); filter:brightness(1.28); }
 .projects-neon-sign.is-surge-dim .neon-letter::before,.projects-neon-sign.is-surge-dim .neon-letter::after { filter:brightness(.4); }
 .projects-neon-sign.is-surge-pop .neon-letter::before,.projects-neon-sign.is-surge-pop .neon-letter::after { filter:brightness(1.1); }
 .neon-vines { position:absolute; inset:0; z-index:3; width:100%; height:100%; overflow:visible; pointer-events:none; }
@@ -363,19 +367,17 @@ body.journal-open { overflow:hidden; }
   background:#050505;
   color:#e8dcc0;
   touch-action:none;
-  animation:desk-overlay-in .28s ease-out both;
 }
 .desk-overlay.is-closing { animation:desk-overlay-out .44s ease-in both; }
 .desk-room {
   position:absolute;
   inset:0;
   overflow:hidden;
-  opacity:0;
+  opacity:1;
   background:
     radial-gradient(ellipse at 14% 8%,rgba(255,179,71,.13),transparent 32%),
     radial-gradient(ellipse at 50% 38%,rgba(88,53,34,.32),transparent 55%),
     linear-gradient(160deg,#17120f 0%,#0a0909 56%,#050607 100%);
-  animation:desk-scene-in .55s ease-out .88s both;
 }
 .desk-room::after {
   content:"";
@@ -521,7 +523,7 @@ body.journal-open { overflow:hidden; }
   pointer-events:none;
 }
 .journal-open-prompt { position:absolute; z-index:3; left:50%; bottom:-38px; transform:translateX(-50%); color:#f0c177; font:10px var(--typewriter); letter-spacing:.24em; text-shadow:0 0 15px rgba(255,179,71,.6); }
-.journal-book.is-opening .journal-cover,.journal-book.is-open .journal-cover { transform:rotateY(-148deg); }
+.journal-book.is-open .journal-cover { transform:rotateY(-148deg); }
 .journal-book.is-opening .journal-cover { animation:journal-cover-open .9s cubic-bezier(.2,.72,.2,1) both; }
 .journal-spine { position:absolute; z-index:1; top:0; bottom:0; left:0; width:16px; border-radius:4px 0 0 4px; background:linear-gradient(90deg,#21130f,#986345 48%,#392119); transform:translateZ(-2px); }
 .desk-room::before {
@@ -534,7 +536,8 @@ body.journal-open { overflow:hidden; }
   mix-blend-mode:screen;
   background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='grain'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.86' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23grain)' opacity='.75'/%3E%3C/svg%3E");
 }
-.desk-overlay.has-diary .desk-room { opacity:.15 !important; }
+.desk-overlay.has-diary .journal-book { visibility:hidden; }
+.desk-diary-scrim { position:absolute; z-index:8; inset:0; pointer-events:none; background:rgba(0,0,0,.84); }
 .desk-overlay.has-diary .desk-entry-wash { display:none; }
 .desk-overlay.has-diary .desk-back-button { visibility:hidden; }
 .desk-back-button {
@@ -557,12 +560,11 @@ body.journal-open { overflow:hidden; }
 @keyframes journal-fog-push { 0% {opacity:0;transform:scale(.9)} 55% {opacity:.85} 100% {opacity:.35;transform:scale(1.08)} }
 @keyframes desk-overlay-in { from {opacity:0} to {opacity:1} }
 @keyframes desk-overlay-out { to {opacity:0} }
-@keyframes desk-scene-in { from {opacity:0;filter:brightness(.4)} to {opacity:1;filter:brightness(1)} }
 @keyframes desk-dark-beat { 0%,62% {opacity:1} 100% {opacity:0} }
 @keyframes lamp-breathe { from {opacity:.83;transform:scale(.98)} to {opacity:1;transform:scale(1.03)} }
 @keyframes dust-rise { 0% {opacity:0;transform:translate3d(0,24px,0)} 15% {opacity:.7} 82% {opacity:.45} 100% {opacity:0;transform:translate3d(32px,-110px,0)} }
-@keyframes journal-cover-open { to {transform:rotateY(-148deg)} }
-@keyframes diary-fade-in { from {opacity:0;transform:translate(-50%,-48%)} to {opacity:1;transform:translate(-50%,-50%)} }
+@keyframes journal-cover-open { from {transform:rotateY(0)} to {transform:rotateY(-148deg)} }
+@keyframes diary-content-in { from {opacity:0} to {opacity:1} }
 @media (max-width:700px) {
   .desk-table-perspective { inset:43% -40% -12%; }
   .journal-book { top:53%; }
@@ -573,8 +575,7 @@ body.journal-open { overflow:hidden; }
 @media (prefers-reduced-motion:reduce) {
   .scene-world.journal-entering,.scene-world.journal-overlay-active,.scene-world.journal-returning { transition:none; }
   .scene-world.journal-entering::after,.desk-lamp-glow,.desk-dust i,.neon-vines .vine { animation:none; }
-  .desk-overlay,.desk-room,.desk-entry-wash { animation-duration:.25s !important; animation-iteration-count:1 !important; animation-delay:0s !important; }
-  .desk-room { animation-name:desk-scene-in; }
+  .desk-overlay,.desk-entry-wash { animation-duration:.25s !important; animation-iteration-count:1 !important; animation-delay:0s !important; }
   .desk-entry-wash { animation-name:desk-dark-beat; }
   .journal-book,.journal-book:hover,.journal-book:focus-within { translate:none; }
   .journal-book.is-opening .journal-cover,.journal-book.is-open .journal-cover { transform:none; animation:none; }
@@ -584,19 +585,33 @@ body.journal-open { overflow:hidden; }
   position:fixed;
   z-index:12;
   inset:0;
-  display:grid;
-  place-items:center;
-  padding:clamp(54px,8vh,82px) 4vw 78px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:3vh 4vw;
   overflow:hidden;
   color:#2a2a2a;
   background:radial-gradient(ellipse at 50% 50%,rgba(9,7,6,.22),rgba(5,5,6,.58) 78%);
-  animation:diary-fade-in .35s ease both;
+}
+.diary-stage {
+  position:relative;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:14px;
+  width:min(1100px,92vw);
+  height:min(86vh,800px);
+  max-height:86vh;
+  padding:50px 0 44px;
+  box-sizing:border-box;
+  animation:diary-content-in .35s ease both;
 }
 .diary-close {
   position:absolute;
   z-index:20;
-  top:clamp(20px,4vh,40px);
-  right:clamp(20px,4vw,46px);
+  top:0;
+  right:0;
   width:42px;
   height:42px;
   border:1px solid rgba(232,220,192,.45);
@@ -609,9 +624,11 @@ body.journal-open { overflow:hidden; }
 .diary-close:hover { color:#ffcf81; border-color:#ffb347; }
 .diary-book-wrap {
   position:relative;
-  width:min(1100px,92vw);
+  flex:0 1 auto;
+  width:100%;
   height:min(70vh,680px);
-  min-height:440px;
+  max-height:calc(86vh - 110px);
+  min-height:0;
   perspective:1800px;
   filter:drop-shadow(0 25px 32px rgba(0,0,0,.48));
 }
@@ -811,14 +828,12 @@ body.journal-open { overflow:hidden; }
 .diary-closing-note .diary-hand-title { font-size:clamp(42px,5vw,68px); }
 .diary-closing-art { position:absolute; inset:0; display:grid; place-items:center; color:rgba(104,72,48,.32); font:clamp(100px,18vw,220px) var(--hand); }
 .diary-navigation {
-  position:absolute;
+  position:relative;
   z-index:12;
-  bottom:clamp(16px,3vh,30px);
-  left:50%;
+  flex:none;
   display:flex;
   align-items:center;
   gap:20px;
-  transform:translateX(-50%);
   color:#e8dcc0;
   font:10px var(--typewriter);
   letter-spacing:.16em;
@@ -896,8 +911,9 @@ body.journal-open { overflow:hidden; }
 @keyframes diary-page-flip { 0% {transform:rotateY(0);box-shadow:none} 50% {box-shadow:-30px 0 42px rgba(39,27,18,.28)} 100% {transform:rotateY(-180deg);box-shadow:none} }
 .diary-overlay .diary-page-left::marker { color:#2a2a2a; }
 @media (max-width:700px) {
-  .diary-overlay { padding:62px 4vw 72px; }
-  .diary-book-wrap { width:92vw; height:min(78vh,780px); min-height:490px; }
+  .diary-overlay { padding:3vh 4vw; }
+  .diary-stage { width:92vw; height:86vh; gap:10px; padding:50px 0 44px; }
+  .diary-book-wrap { width:100%; height:min(72vh,620px); max-height:calc(86vh - 110px); min-height:0; }
   .diary-spread { display:block; }
   .diary-page-left { position:absolute; inset:0; padding:30px 27px 36px; clip-path:none; border-radius:5px; }
   .diary-page-right {
@@ -934,7 +950,7 @@ body.journal-open { overflow:hidden; }
   .diary-spine-shadow { display:none; }
 }
 @media (prefers-reduced-motion:reduce) {
-  .diary-overlay,.diary-writing > * { animation:none; }
+  .diary-stage,.diary-writing > * { animation:none; }
   .diary-writing > * { clip-path:none; }
   .sketch-stroke,.diary-sketch-fallback path,.diary-tools svg path { stroke-dashoffset:0; animation:none; }
   .diary-sketch-raster { clip-path:none; animation:none; }
